@@ -1,0 +1,48 @@
+name: Translate Markdown Files
+
+on:
+  push:
+    paths:
+      - "**.md"
+  workflow_dispatch: # Allow manual trigger for the workflow
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+
+    env:
+      PYTHONUNBUFFERED: 1
+      TRANSLATION_DIR: translation # Define "translation" as a constant
+
+    steps:
+      - name: 📥 Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🛠 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: 📦 Install dependencies
+        run: |
+          pip install deep-translator markdown
+
+      - name: 🌐 Translate Markdown files to English
+        run: |
+          mkdir -p $TRANSLATION_DIR
+          find . -name "*.md" -not -path "./$TRANSLATION_DIR/*" | while read file; do
+            echo "$file"
+            translated_file="$TRANSLATION_DIR/${file#./}"
+            mkdir -p "$(dirname "$translated_file")"
+            python translate_md.py "$file" "$translated_file"
+          done
+
+      - name: 📦 Package translated files
+        run: |
+          zip -r translated_files.zip translation
+
+      - name: 📤 Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: translated-files
+          path: translated_files.zip
